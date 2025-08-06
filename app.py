@@ -68,12 +68,15 @@ class MinecraftLauncherApp(ctk.CTk):
                     'type': version_type,
                     'display': f"{version_id} ({version_type})"
                 })
+
             if self.show_modded_var.get():
                 self.add_forge_versions(versions_data)
                 self.add_fabric_versions(versions_data)
                 self.add_optifine_versions(versions_data)
+
             self.versions_data = versions_data
             self.installed_versions = self.get_installed_versions()
+
             # Переключаемся на экран игры
             if self.winfo_exists():
                 self.after(0, self.show_play_screen)
@@ -90,24 +93,26 @@ class MinecraftLauncherApp(ctk.CTk):
                     versions_data.append({
                         'id': f"forge:{version}",
                         'type': 'forge',
-                        'display': f"{version} (forge)"
+                        'display': f"{version} (Forge)"
                     })
         except Exception as e:
             self.print_to_console(f"⚠️ Ошибка при загрузке Forge: {e}")
 
     def add_fabric_versions(self, versions_data):
         try:
-            fabric_versions = mcl.fabric.get_all_minecraft_versions()
-            for version in fabric_versions:
-                ver_id = version['version']
-                is_stable = version['stable']
+            fabric_mc_versions = mcl.fabric.get_all_minecraft_versions()
+            for entry in fabric_mc_versions:
+                mc_version = entry['version']
+                is_stable = entry['stable']
                 if not is_stable and not self.show_experimental_var.get():
                     continue
-                if not any(v['id'] == f"fabric:{ver_id}" for v in versions_data):
+                # Мы не знаем точное имя версии (оно будет после установки), но храним тип
+                display_name = f"{mc_version} (Fabric)"
+                if not any(v['id'] == f"fabric:{mc_version}" for v in versions_data):
                     versions_data.append({
-                        'id': f"fabric:{ver_id}",
+                        'id': f"fabric:{mc_version}",
                         'type': 'fabric',
-                        'display': f"{ver_id} (fabric)"
+                        'display': display_name
                     })
         except Exception as e:
             self.print_to_console(f"⚠️ Ошибка при загрузке Fabric: {e}")
@@ -182,6 +187,7 @@ class MinecraftLauncherApp(ctk.CTk):
 
         list_frame = ctk.CTkFrame(self)
         list_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
         ctk.CTkLabel(list_frame, text="Выберите версию для запуска:", font=("Arial", 14)).pack(anchor="w", padx=10, pady=(10, 5))
 
         canvas = ctk.CTkCanvas(list_frame, bg="#2b2b2b", highlightthickness=0)
@@ -217,10 +223,13 @@ class MinecraftLauncherApp(ctk.CTk):
 
         input_frame = ctk.CTkFrame(self)
         input_frame.pack(fill="x", padx=10, pady=10)
+
         ctk.CTkLabel(input_frame, text="Никнейм:").grid(row=0, column=0, padx=10, sticky="w")
         ctk.CTkEntry(input_frame, textvariable=self.username_var, width=200).grid(row=0, column=1, padx=5)
+
         ram_label = ctk.CTkLabel(input_frame, text=f"RAM: {self.ram_var.get()} ГБ")
         ram_label.grid(row=0, column=2, padx=20)
+
         ctk.CTkSlider(
             input_frame,
             from_=1,
@@ -236,7 +245,6 @@ class MinecraftLauncherApp(ctk.CTk):
         username = self.username_var.get() or generate_username()[0]
         uuid = self.uuid_var.get() or str(uuid1())
         ram = self.ram_var.get()
-
         options = {
             'username': username,
             'uuid': uuid,
@@ -302,13 +310,11 @@ class MinecraftLauncherApp(ctk.CTk):
 
         btn_frame = ctk.CTkFrame(search_frame)
         btn_frame.grid(row=0, column=2, padx=5)
-
         ctk.CTkButton(
             btn_frame,
             text="🔧 Выбрать",
             command=self.open_version_selector
         ).pack(side="left", padx=2)
-
         ctk.CTkButton(
             btn_frame,
             text="⚡ OptiFine",
@@ -389,12 +395,15 @@ class MinecraftLauncherApp(ctk.CTk):
                     'type': version_type,
                     'display': f"{version_id} ({version_type})"
                 })
+
             if self.show_modded_var.get():
                 self.add_forge_versions(versions_data)
                 self.add_fabric_versions(versions_data)
                 self.add_optifine_versions(versions_data)
+
             self.versions_data = versions_data
             self.filtered_versions = versions_data.copy()
+
             if self.winfo_exists():
                 self.after(0, self.update_selected_label)
                 self.status_var.set("Готово")
@@ -414,17 +423,21 @@ class MinecraftLauncherApp(ctk.CTk):
         selector_window.geometry("500x500")
         selector_window.transient(self)
         selector_window.grab_set()
+
         search_var = ctk.StringVar()
         search_entry = ctk.CTkEntry(selector_window, placeholder_text="Поиск...", textvariable=search_var)
         search_entry.pack(fill="x", padx=10, pady=10)
         search_entry.bind("<KeyRelease>", lambda e: self.filter_versions_in_window(search_var.get(), listbox, listbox_items))
+
         listbox_frame = ctk.CTkFrame(selector_window)
         listbox_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
         listbox = tk.Listbox(listbox_frame, font=("Arial", 12), bg="#2b2b2b", fg="white", selectmode="single", bd=0, highlightthickness=0)
         scrollbar = ctk.CTkScrollbar(listbox_frame, orientation="vertical", command=listbox.yview)
         listbox.configure(yscrollcommand=scrollbar.set)
         listbox.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
         listbox_items = []
         for v in self.versions_data:
             listbox.insert("end", v['display'])
@@ -449,7 +462,6 @@ class MinecraftLauncherApp(ctk.CTk):
         selector_window.geometry("500x500")
         selector_window.transient(self)
         selector_window.grab_set()
-
         ctk.CTkLabel(selector_window, text="Выберите версию OptiFine", font=("Arial", 16)).pack(pady=10)
 
         try:
@@ -469,7 +481,6 @@ class MinecraftLauncherApp(ctk.CTk):
         listbox = tk.Listbox(listbox_frame, font=("Arial", 12), bg="#2b2b2b", fg="white", selectmode="single", bd=0, highlightthickness=0)
         scrollbar = ctk.CTkScrollbar(listbox_frame, orientation="vertical", command=listbox.yview)
         listbox.configure(yscrollcommand=scrollbar.set)
-
         listbox.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
@@ -552,17 +563,19 @@ class MinecraftLauncherApp(ctk.CTk):
                 self.after(0, lambda: self.disable_buttons(True))
             self.print_to_console(f"📥 Начало установки: {version_id} ({version_type})")
 
-            clean_id = version_id.split(":", 1)[1] if ":" in version_id else version_id
-
             if version_type == "forge":
-                mcl.forge.install_forge_version(clean_id, self.minecraft_directory, callback=callback)
+                forge_version = version_id.split(":", 1)[1]
+                mcl.forge.install_forge_version(forge_version, self.minecraft_directory, callback=callback)
             elif version_type == "fabric":
-                mcl.fabric.install_fabric(clean_id, self.minecraft_directory, callback=callback)
+                mc_version = version_id.split(":", 1)[1]
+                mcl.fabric.install_fabric(mc_version, self.minecraft_directory, callback=callback)
             elif version_type == "optifine":
-                mcl.install.install_minecraft_version(clean_id, self.minecraft_directory, callback=callback)
+                mc_version = version_id.split(":", 1)[1]
+                mcl.install.install_minecraft_version(mc_version, self.minecraft_directory, callback=callback)
             else:
                 mcl.install.install_minecraft_version(version_id, self.minecraft_directory, callback=callback)
 
+            # Обновляем список установленных версий
             self.installed_versions = self.get_installed_versions()
             if self.winfo_exists():
                 self.after(0, lambda: messagebox.showinfo("Успех", "Установка завершена!"))
